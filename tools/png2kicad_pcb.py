@@ -136,7 +136,7 @@ def main():
     import sys
 
     if len(sys.argv) < 3:
-        print("Usage: %s input_name dpi" % sys.argv[0])
+        print(f"Usage: {sys.argv[0]} input_name dpi")
         print("  input_name is added to \"_front.png\" (and \"_back.png\") ")
         print("  dpi is the dots per inch of the input file\"")
         sys.exit(1)
@@ -148,9 +148,8 @@ def main():
     module = pcb_header + module + pcb_footer
     print("Output image size: %f x %f mm" % (size[0], size[1]))
     print("Writing module file to \"%s.kicad_pcb\"" % input_name)
-    fid = open("%s.kicad_pcb" % input_name, "w")
-    fid.write(module)
-    fid.close()
+    with open(f"{input_name}.kicad_pcb", "w") as fid:
+        fid.write(module)
 
 if __name__ == "__main__":
     main()

@@ -37,13 +37,9 @@ def bezier_to_polyline(p1, p2, p3, p4):
     dd0     = ( p1[0] - 2 * p2[0] + p3[0] )**2 + ( p1[1] - 2 * p2[1] + p3[1] )**2
     dd1     = ( p2[0] - 2 * p3[0] + p4[0] )**2 + ( p2[1] - 2 * p3[1] + p4[1] )**2
     dd      = 6 * ( max( dd0, dd1 ) )**.5
-    if ((8 * delta) <= dd):
-        e2 = 8 * delta / dd
-    else:
-        e2 = 1
-    epsilon = ( e2 )**.5; # necessary interval size
-
-    points = list()
+    e2 = 8 * delta / dd if ((8 * delta) <= dd) else 1
+    epsilon = ( e2 )**.5
+    points = []
     t = epsilon
     while (t < 1):
         point = (p1[0] * ( 1 - t )**3 + \
@@ -70,18 +66,22 @@ def bezier_to_polyline(p1, p2, p3, p4):
     # return module
 
 def curve_to_points(areas, curve, fp_type, process_children):
-    points = list()
-    points.append((curve.start_point[0], curve.start_point[1]))
+    points = [(curve.start_point[0], curve.start_point[1])]
     for segment in curve.segments:  
         if segment.is_corner:
-            points.append((segment.c[0], segment.c[1]))
-            points.append((segment.end_point[0], segment.end_point[1]))
-        # else:
-            # points.extend(curve.tesselate())   
-            # points.extend(bezier_to_polyline(curve.start_point, segment.c1, segment.c2, segment.end_point))
-            # points.append((segment.end_point[0], segment.end_point[1]))
+            points.extend(
+                (
+                    (segment.c[0], segment.c[1]),
+                    (segment.end_point[0], segment.end_point[1]),
+                )
+            )
+
+            # else:
+                # points.extend(curve.tesselate())   
+                # points.extend(bezier_to_polyline(curve.start_point, segment.c1, segment.c2, segment.end_point))
+                # points.append((segment.end_point[0], segment.end_point[1]))
     points.append((curve.start_point[0], curve.start_point[1]))
-    
+
     if not process_children:
         return points
 
@@ -115,15 +115,15 @@ def curve_to_points(areas, curve, fp_type, process_children):
 
 def render_path_to_layer(path, fp_type, layer, scale_factor):
     module = ""
-    areas = list()
-    children = list()
+    areas = []
+    children = []
     for curve in path.curves_tree:
         curve_to_points(areas, curve, fp_type, True)
 
     for poly in areas:
+        i = 0
         if fp_type == "fp_poly":
             module += "\n  (%s (pts" % fp_type
-            i = 0
             for point in poly:
                 module += " (xy %f %f)" % (point[0] * 25.4 / scale_factor, point[1] * 25.4 / scale_factor)
                 i += 1
@@ -138,7 +138,6 @@ def render_path_to_layer(path, fp_type, layer, scale_factor):
   )
 """ % layer
         else:
-            i = 0
             poly.append(poly[len(poly)-1])
             for i, point in enumerate(poly):
                 if i+2 < len(poly):
@@ -156,7 +155,7 @@ def conv_image_to_module(name, scale_factor):
 
     module = header % {"name": name}
 
-    front_image = Image.open("%s_front.png" % name)    
+    front_image = Image.open(f"{name}_front.png")
     print("Reading image from \"%s_front.png\"" % name)
 
     front_image_red, front_image_green, front_image_blue, front_image_alpha = front_image.split()
@@ -197,7 +196,7 @@ def conv_image_to_module(name, scale_factor):
     module += render_path_to_layer(path_blue, "fp_poly", "F.SilkS", scale_factor)
 
     try:
-        back_image = Image.open("%s_back.png" % name)
+        back_image = Image.open(f"{name}_back.png")
         back_image = ImageOps.mirror(back_image)
         print("Reading image from \"%s_back.png\"" % name)
 
@@ -237,7 +236,7 @@ def main():
     import sys
 
     if len(sys.argv) < 3:
-        print("Usage: %s input_name dpi" % sys.argv[0])
+        print(f"Usage: {sys.argv[0]} input_name dpi")
         print("  input_name is added to \"_front.png\" (and \"_back.png\") ")
         print("  dpi is the dots per inch of the input file\"")
         sys.exit(1)
@@ -248,9 +247,8 @@ def main():
     module, size = conv_image_to_module(input_name, dpi)
     print("Output image size: %f x %f mm" % (size[0], size[1]))
     print("Writing module file to \"%s.kicad_mod\"" % input_name)
-    fid = open("%s.kicad_mod" % input_name, "w")
-    fid.write(module)
-    fid.close()
+    with open(f"{input_name}.kicad_mod", "w") as fid:
+        fid.write(module)
 
 if __name__ == "__main__":
     main()
